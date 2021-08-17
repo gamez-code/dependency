@@ -21,5 +21,6 @@ if "__main__" == __name__:
             lines = data.split("\n")
         except FileNotFoundError:
             print("There is a problem, the file cannot found")
-    response = Dependency(lines)
+    response = Dependency(lines).play()
+    list(map(print, response))
         
