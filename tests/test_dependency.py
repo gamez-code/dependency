@@ -1,48 +1,91 @@
+import os
 from unittest import TestCase
 from dependency.main import Dependency
 
-#class DependencyTest(TestCase):
+class DependencyTest(TestCase):
+    def setUp(self):
+        with open(Dependency._dependency_file, "w") as file:
+            file.write("")
 
-def test_depend():
-    data = [
-        "DEPEND TELNET TCPIP  NETCARD   ", 
-        "DEPEND TCPIP  NETCARD ", 
-        "DEPEND DNS TCPIP   NETCARD   ", 
-        "DEPEND BROWSER   TCPIP HTML   ", 
+    def test_depend(self):
+        data = [
+            "DEPEND TELNET TCPIP  NETCARD   ", 
+            "DEPEND TCPIP  NETCARD ", 
+            "DEPEND DNS TCPIP   NETCARD   ", 
+            "DEPEND BROWSER   TCPIP HTML   ", 
+            "INSTALL NETCARD", 
+            "INSTALL TELNET", 
+            "INSTALL foo",
+            "REMOVE NETCARD",
+            "INSTALL BROWSER", 
+            "INSTALL DNS "
+            ]
+        expected = [
+            "DEPEND TELNET TCPIP NETCARD",
+            "DEPEND TCPIP NETCARD",
+            "DEPEND DNS TCPIP NETCARD",
+            "DEPEND BROWSER TCPIP HTML",
+            "INSTALL NETCARD\n   NETCARD successfully installed", 
+            "INSTALL TELNET\n   TCPIP successfully installed\n   TELNET successfully installed",
+            "INSTALL foo\n   foo successfully installed",
+            "REMOVE NETCARD\n   NETCARD is still needed",
+            "INSTALL BROWSER\n   HTML successfully installed\n   BROWSER successfully installed", 
+            "INSTALL DNS\n   DNS successfully installed"
         ]
-    expected = [
-        "DEPEND TELNET TCPIP NETCARD",
-        "DEPEND TCPIP NETCARD",
-        "DEPEND DNS TCPIP NETCARD",
-        "DEPEND BROWSER TCPIP HTML"
-    ]
-    _output = Dependency(data).play()
-    for idx in range(len(_output)):
-        assert _output[idx] == expected[idx]
+        _output = Dependency(data).play()
+        print(_output)
+        for idx in range(len(_output)):
+            assert _output[idx] == expected[idx]
         
-def test_install():
-    data = ["INSTALL NETCARD", "INSTALL TELNET"]
-    expected = [
-        "INSTALL NETCARD\n   NETCARD successfully installed",
-        "INSTALL TELNET\n   TCPIP successfully installed\n  TELNET successfully installed"
+        list_data = [
+            "LIST"
+            ]
+        list_expected_1 = ["LIST", "HTML",  "BROWSER",   "DNS",   "NETCARD",   "foo",   "TCPIP", "TELNET"]
+        _output = Dependency(list_data).play()
+        for _e in list_expected_1:
+            assert _e in _output[0]
+
+        data_2 = [
+            "REMOVE TELNET", 
+            "REMOVE NETCARD",
+            "REMOVE DNS", 
+            "REMOVE NETCARD",
+            "INSTALL foo",
+            "INSTALL NETCARD ",
+            "REMOVE TCPIP",
+            "REMOVE BROWSER",
+            "REMOVE TCPIP"
         ]
-    _output = Dependency(data).play()
-    print(_output)
-    for idx in range(len(data)):
-        assert data[idx] == expected[idx]
+        expected_2 = [
+            "REMOVE TELNET\n   TELNET successfully removed", 
+            "REMOVE NETCARD\n   NETCARD is still needed", 
+            "REMOVE DNS\n   DNS successfully removed", 
+            "REMOVE NETCARD\n   NETCARD is still needed",
+            "INSTALL foo\n   foo is already installed",
+            "INSTALL NETCARD\n   NETCARD is already installed",
+            "REMOVE TCPIP\n   TCPIP is still needed",
+            "REMOVE BROWSER\n   BROWSER successfully removed\n   TCPIP is no longer needed\n   TCPIP successfully removed\n   NETCARD is no longer needed\n   NETCARD successfully removed\n   HTML is no longer needed\n   HTML successfully removed",
+            "REMOVE TCPIP\n   TCPIP is not installed"
+        ]
+        _output = Dependency(data_2).play()
+        for idx in range(len(_output)):
+            assert _output[idx] == expected_2[idx]
 
-def test_input_1():
-    with open("tests/test_input.txt", "r") as file:
-        data = file.read()
-    lines = data.split("\n")
-    response = Dependency(lines)
-
-    with open("tests/test_output.txt", "r") as file:
-        _data = file.read()
+        list_data_2 = ["LIST", "END"]
+        list_expected_2 = ["LIST", "foo"]
+        _output = Dependency(list_data_2).play()
+        for _e in list_expected_2:
+            assert _e in _output[0]
+        assert "END" == _output[1]
     
-def test_package_object():
-    data = '{"depend": ["{\\"depend\\": [\\"{\\\\\\"depend\\\\\\": [], \\\\\\"_id\\\\\\": \\\\\\"dfba3fb9-48c9-4caf-b425-faf5894d8e86\\\\\\", \\\\\\"name\\\\\\": \\\\\\"INTERNET\\\\\\"}\\"], \\"_id\\": \\"c4c22746-b7af-40ea-b9fe-d0e9525581d8\\", \\"name\\": \\"TCP\\"}"], "_id": "9c884bb1-8935-44c4-bc93-5880e4f46c21", "name": "BROWSER"}'
+    def test_input_1(self):
+        os.system("python3 -m dependency -s tests/test_input.txt > test.txt")
 
-if "__main__" == __name__:
-    test_depend()
-    test_install()
+        with open("test.txt", "r") as file:
+            data = file.read()
+
+        with open("tests/test_output.txt", "r") as file:
+            _data = file.read()
+        os.system("rm -f test.txt")
+        assert data == _data
+    

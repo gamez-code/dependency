@@ -33,9 +33,12 @@ class Dependency(List, Remove, Install, Depend):
     def _select_action(self, line: str) -> str:
         _methods = filter(lambda x: "_" not in x, self.__dir__())
         for method in self.__dir__():
-            if method in line.lower():
+            if method == line.lower().strip().split()[0]:
                 return getattr(self, method)(line)
     
+    def end(self, line: str) -> str:
+        return "END"
+
     def create_package(self, name: str) -> object:
         _package = self._read_package_by_name(name)
         if _package:
